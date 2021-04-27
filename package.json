@@ -1,0 +1,17 @@
+{
+  "name": "covid-vaccine-checker",
+  "description": "Checks for SafeWay Covid Vaccines",
+  "version": "1.0.0",
+  "main": "index.js",
+  "bin": {
+    "covid-vaccine-checker": "./index.js"
+  },
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "beepbeep": "^1.3.0",
+    "meow": "^9.0.0"
+  },
+  "license": "MIT"
+}
