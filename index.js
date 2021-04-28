@@ -2,7 +2,6 @@
 
 const beep = require("beepbeep");
 const https = require('https');
-const { exec } = require("child_process");
 const meow = require("meow");
 
 const cli = meow(`
@@ -37,32 +36,6 @@ const httpsGet = (url) => {
       .on("error", reject);
   });
 };
-
-const httpsGetRedirectedURL = (url) => {
-  return new Promise((resolve, reject) => {
-    exec(
-      "curl -Ls -o /dev/null -w %{url_effective} " + url,
-      (error, stdout, stderr) => {
-        if (error || stderr) {
-          reject(error || stderr);
-        }
-        resolve(stdout);
-      }
-    );
-  });
-};
-
-(async function () {
-  const redirectedSearchParamWeatherForecast = new URL(
-    await httpsGetRedirectedURL(
-      "https://forecast.weather.gov/zipcity.php?inputstring=" + cli.input[0]
-    )
-  ).searchParams;
-  global.zipCodeLatLong = [
-    redirectedSearchParamWeatherForecast.get("lat"),
-    redirectedSearchParamWeatherForecast.get("lon"),
-  ];
-})();
 
 /* Thanks to {@link https://stackoverflow.com/a/27943/13514657} */
 function getDistanceFromLatLonInKm(point1, point2) {
@@ -106,22 +79,28 @@ async function getRangedStores() {
 }
 
 (async function () {
-  global.rem = await getRangedStores();
-})();
-
-setInterval(async () => {
-  var nextRem = await getRangedStores();
-  if (JSON.stringify(nextRem) !== JSON.stringify(rem)) {
-    const newIds = nextRem.map((store) => store.id);
-    const oldIds = rem.map((store) => store.id);
-    newIds.forEach((id) => {
-      if (!oldIds.includes(id)) {
-        idObject = nextRem.find((store) => store.id === id);
-        console.log(
-          `A store at ${idObject.address} is now avaliable (${idObject.coach_url})`
-        );
-        beep(5);
+  const zip2coodData = JSON.parse(await httpsGet('https://s3-us-west-2.amazonaws.com/mhc.cdn.content/lat-long.json')).find(zip2coodDataPoint => zip2coodDataPoint.zip === cli.input[0]);
+  global.zipCodeLatLong = [
+    zip2coodData.lat,
+    zip2coodData.lon,
+  ];
+  (async function () {
+    global.rem = await getRangedStores();
+    setInterval(async () => {
+      var nextRem = await getRangedStores();
+      if (JSON.stringify(nextRem) !== JSON.stringify(rem)) {
+        const newIds = nextRem.map((store) => store.id);
+        const oldIds = rem.map((store) => store.id);
+        newIds.forEach((id) => {
+          if (!oldIds.includes(id)) {
+            idObject = nextRem.find((store) => store.id === id);
+            console.log(
+              `A store at ${idObject.address} is now avaliable (${idObject.coach_url})`
+            );
+            beep(5);
+          }
+        });
       }
-    });
-  }
-}, 1000);
+    }, 1000);    
+  })();  
+})();
